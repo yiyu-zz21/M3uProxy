@@ -4,8 +4,8 @@ import type { Channel, ChannelsResponse, GroupsResponse, PlayInfo, ChannelQuery 
 const API_BASE_URL = 'http://localhost:8006';
 
 // 通用请求方法
-async function fetchAPI<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+async function fetchAPI<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new Error(`API 请求失败: ${response.statusText}`);
@@ -43,7 +43,7 @@ export async function getGroups(): Promise<GroupsResponse> {
 }
 
 // 获取播放信息
-export async function getPlayInfo(id: string): Promise<PlayInfo> {
+export async function getPlayInfo(id: string, signal?: AbortSignal): Promise<PlayInfo> {
   const url = `${API_BASE_URL}/api/play/${id}`;
-  return fetchAPI<PlayInfo>(url);
+  return fetchAPI<PlayInfo>(url, signal);
 }
