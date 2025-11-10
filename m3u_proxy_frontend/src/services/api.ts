@@ -1,7 +1,9 @@
 import type { Channel, ChannelsResponse, GroupsResponse, PlayInfo, ChannelQuery } from '../types/channel';
 
-// API 基础 URL - 直接使用后端地址
-const API_BASE_URL = 'http://localhost:8006';
+// API 基础 URL - 优先使用构建期注入的环境变量，否则退化为当前站点
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8006');
 
 // 通用请求方法
 async function fetchAPI<T>(url: string, signal?: AbortSignal): Promise<T> {

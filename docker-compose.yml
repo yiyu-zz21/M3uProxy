@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./m3u_proxy
+      dockerfile: Dockerfile
+    image: m3u-proxy-backend
+    restart: unless-stopped
+    volumes:
+      - ./m3u_proxy/Gather.m3u:/app/Gather.m3u:ro
+    ports:
+      - "8006:8006"
+
+  frontend:
+    build:
+      context: ./m3u_proxy_frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://backend:8006
+    image: m3u-proxy-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8007:80"

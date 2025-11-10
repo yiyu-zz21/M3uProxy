@@ -57,6 +57,13 @@ const playUrl = ref<string>('');
 const abortController = ref<AbortController | null>(null);
 const playerKey = ref(0); // 用于强制重建播放器
 
+function disposePlayer() {
+  if (player.value) {
+    player.value.dispose?.();
+    player.value = null;
+  }
+}
+
 async function loadChannel(channel: Channel) {
   if (!channel) return;
 
@@ -71,8 +78,8 @@ async function loadChannel(channel: Channel) {
   loading.value = true;
   error.value = null;
 
-  // 清空播放器引用（Vue 会自动清理 DOM）
-  player.value = null;
+  // 清理旧播放器，避免状态遗留
+  disposePlayer();
 
   // 增加 playerKey，强制 Vue 重建整个 video-wrapper
   playerKey.value++;
@@ -80,13 +87,13 @@ async function loadChannel(channel: Channel) {
 
   // 等待 Vue 完成 DOM 重建
   await nextTick();
-  await new Promise(resolve => setTimeout(resolve, 50));
 
   try {
-    const playInfo = await getPlayInfo(channel.id, abortController.value.signal);
+    const controller = abortController.value;
+    const playInfo = await getPlayInfo(channel.id, controller?.signal);
 
     // 检查请求是否已被取消
-    if (abortController.value.signal.aborted) {
+    if (controller?.signal.aborted) {
       console.log('请求已取消');
       loading.value = false;
       return;
@@ -97,10 +104,6 @@ async function loadChannel(channel: Channel) {
     // 更新频道信息
     currentChannel.value = channel;
     playUrl.value = playInfo.play_url;
-
-    // 再次等待，确保 Vue 完成 DOM 更新
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 50));
 
     // 确保 video 元素已经重新渲染
     if (!videoElement.value) {
@@ -156,9 +159,6 @@ async function loadChannel(channel: Channel) {
     player.value.on('playing', () => {
       console.log('▶️ 视频正在播放');
     });
-
-    currentChannel.value = channel;
-    playUrl.value = playInfo.play_url;
   } catch (err) {
     // 如果是请求被取消，不显示错误
     if (err instanceof Error && err.name === 'AbortError') {
@@ -175,11 +175,6 @@ function reload() {
   if (currentChannel.value) {
     loadChannel(currentChannel.value);
   }
-}
-
-function handleImageError(event: Event) {
-  const img = event.target as HTMLImageElement;
-  img.style.display = 'none';
 }
 
 watch(
@@ -205,7 +200,7 @@ onBeforeUnmount(() => {
   }
 
   // 清空播放器引用（Vue 会自动清理 DOM）
-  player.value = null;
+  disposePlayer();
 });
 </script>
 
@@ -222,9 +217,18 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   background: #000;
+  overflow: hidden;
+}
+
+.video-wrapper::before {
+  content: '';
+  display: block;
+  padding-top: var(--player-aspect-ratio, 56.25%);
 }
 
 :deep(.video-js) {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
